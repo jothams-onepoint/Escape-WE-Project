@@ -20,7 +20,7 @@ BLACK = (0, 0, 0)
 BUTTON_WIDTH = 200
 BUTTON_HEIGHT = 50
 BUTTON_TEXT_SIZE = 36
-MAX_BACKGROUND_DUPLICATES = 3
+MAX_BACKGROUND_DUPLICATES = 4
 SCROLL_SPEED = 5
 NORMAL_SPEED = 5
 BORDER_TRANSITION_SPEED = 2
@@ -263,8 +263,9 @@ def main_game_loop():
                             is_scrolling = True
                             for bg in backgrounds:
                                 bg.x -= scroll_amount
-                                if bg.right < 0:
-                                    bg.left = max(bg.right for bg in backgrounds)
+                                if bg.right <= 0:
+                                    max_right = max(b.right for b in backgrounds)
+                                    bg.left = max_right
                             chest.rect.x -= scroll_amount
                             if not key.is_picked_up:
                                 key.rect.x -= scroll_amount
@@ -285,8 +286,9 @@ def main_game_loop():
                             is_scrolling = True
                             for bg in backgrounds:
                                 bg.x += scroll_amount
-                                if bg.left > SCREEN_WIDTH:
-                                    bg.right = min(bg.left for bg in backgrounds)
+                                if bg.left >= SCREEN_WIDTH:
+                                    min_left = min(b.left for b in backgrounds)
+                                    bg.right = min_left
                             chest.rect.x += scroll_amount
                             if not key.is_picked_up:
                                 key.rect.x += scroll_amount
