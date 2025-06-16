@@ -61,5 +61,5 @@ From the Escape-WE-Project directory, run:
 
 Credits
 -------
-Developed by [Your Name/Team].
+Developed by Onepoint work experience students.
 Sprites and assets are included in the repository. 
