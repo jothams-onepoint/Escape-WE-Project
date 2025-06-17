@@ -13,35 +13,30 @@ class Item:
     def __init__(self, name, item_type, position, size=(50, 50), sprite=None):
         self.name = name
         self.item_type = item_type
-        self.rect = pygame.Rect(position, size)
         self.is_picked_up = False
         self.gravity = 0.8
         self.y_velocity = 0
-        self.sprite = sprite
-        self.equipped_offset = (30, 0)  # Offset when equipped
-        self.original_image = sprite if sprite else pygame.Surface(size)
-        if not sprite:
-            self.original_image.fill((255, 0, 0))  # Red color for the sword if no sprite
-        self.image = self.original_image
-        self.rect = self.image.get_rect(center=position)
-        if sprite:
-            self.sprite = sprite.copy()  # Create a copy of the sprite
-        else:
-            self.sprite = None
-        self.equipped_offset = (50, 90)  # Offset when equipped
+        
+        # Handle sprite and image initialization
+        self.sprite = sprite.copy() if sprite else None
         self.original_image = self.sprite if self.sprite else pygame.Surface(size)
         if not self.sprite:
-            self.original_image.fill((255, 0, 0))  # Red color for the sword if no sprite
-        self.image = self.original_image.copy()  # Create a copy of the original image
+            self.original_image.fill((255, 0, 0))  # Red color for items without sprite
+        self.image = self.original_image.copy()
+        
+        # Initialize rect and position
         self.rect = self.image.get_rect(center=position)
+        
+        # Equipment and animation properties
+        self.equipped_offset = (50, 90)  # Offset when equipped
         self.rotation_angle = 0
         self.attack_animation = False
         self.attack_progress = 0
         self.attack_speed = 0.2  # Speed of the attack animation
 
     def draw(self, screen, player_position=None):
-        if player_position:
-            if self.item_type == "Weapon":
+        if self.is_picked_up:
+            if player_position and self.item_type == "Weapon":
                 # Calculate the position based on player position and rotation
                 center_x = player_position[0] + self.equipped_offset[0]
                 center_y = player_position[1] + self.equipped_offset[1]
@@ -62,7 +57,7 @@ class Item:
                 rotated_rect = rotated_image.get_rect(center=(center_x, center_y))
                 screen.blit(rotated_image, rotated_rect)
                 self.rect = rotated_rect  # Update the rect for collision detection
-            elif self.item_type == "Key" and self.sprite:
+            elif player_position and self.item_type == "Key" and self.sprite:
                 screen.blit(self.sprite, (player_position[0] + self.equipped_offset[0],
                                         player_position[1] + self.equipped_offset[1]))
         else:
@@ -91,9 +86,11 @@ class Item:
         if self.is_collision(player):
             if self.item_type == "Key" and not self.is_picked_up:
                 player.pick_up_key(self)
+                self.is_picked_up = True
             elif self.item_type == "Weapon" and player.has_key and not self.is_picked_up:
                 player.pick_up_item(self)
                 player.has_key = False
+                self.is_picked_up = True
             elif self.item_type == "Weapon" and not player.has_key:
                 print(f"You need a key to pick up {self.name}.")
 

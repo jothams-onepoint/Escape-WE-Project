@@ -191,8 +191,17 @@ def main_game_loop():
                             slot_rect = player_inventory.get_slot_rect(i)
                             if slot_rect.collidepoint(mouse_pos):
                                 if player_inventory.slots[i] is None and player.equipped_item:
+                                    # Store currently equipped item in the empty slot
                                     player_inventory.add_item(player.equipped_item, i)
-                                player.equip_item(player_inventory.slots[i])
+                                    player.equipped_item = None
+                                elif player_inventory.slots[i] is not None:
+                                    # Swap equipped item with inventory item
+                                    temp_item = player.equipped_item
+                                    player.equipped_item = player_inventory.slots[i]
+                                    if temp_item:
+                                        player_inventory.slots[i] = temp_item
+                                    else:
+                                        player_inventory.slots[i] = None
                                 break
 
                         # Attack if holding a weapon
