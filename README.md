@@ -6,47 +6,63 @@
 
 ## Features
 
-- **Player Movement:** Run, jump, and interact with the environment.
-- **Combat:** Attack enemies using weapons found in chests.
-- **Inventory System:** Manage up to three items, equip weapons, and use keys.
-- **Chests:** Open chests to find weapons and add them to your inventory.
-- **Enemies:** Randomly moving enemies with different sprites and behaviors.
-- **Keys and Doors:** Find keys to unlock doors and advance to the next level.
-- **Scrolling Levels:** Large, scrollable levels with background transitions.
+- **Player Movement:** Run, jump, and interact with the environment
+- **Combat:** Attack enemies using weapons found in chests
+- **Inventory System:** Manage up to three items, equip weapons, and use keys
+- **Chests:** Open chests to find weapons and add them to your inventory
+- **Enemies:** Randomly moving enemies with different sprites and behaviors
+- **Keys and Doors:** Find keys to unlock doors and advance to the next level
+- **Scrolling Levels:** Large, scrollable levels with background transitions
 
 ## How to Play
 
-1. **Start the Game:** Run `Environment.py` to launch the main game loop.
+1. **Start the Game:** Run `game.py` to launch the main game loop
 2. **Controls:**
    - `A` / `D`: Move left/right
    - `SPACE`: Jump
    - `E`: Interact (attack, open chests, pick up items, use doors)
    - `Q`: Drop equipped item
    - Mouse: Select inventory slots and interact with UI
-3. **Objective:** Defeat enemies, collect keys, open doors, and reach the final level to win.
+3. **Objective:** Defeat enemies, collect keys, open doors, and reach the final level to win
 
 ## Game Objects
 
-- **Player:** Can move, jump, attack, and manage inventory.
-- **Enemies:** Move randomly and can damage the player.
-- **Items:** Weapons and keys, each with unique interactions.
-- **Chests:** Contain weapons; require a key to open.
-- **Doors:** Require a key to open and allow progression to the next level.
+- **Player:** Can move, jump, attack, and manage inventory
+- **Enemies:** Move randomly and can damage the player
+- **Items:** Weapons and keys, each with unique interactions
+- **Chests:** Contain weapons; require a key to open
+- **Doors:** Require a key to open and allow progression to the next level
 
 ## File Structure
 
-- `Environment.py`: Main game loop and environment setup.
-- `playerClass.py`: Player mechanics and controls.
-- `itemClass.py`: Item and weapon logic.
-- `Enemy.py`: Enemy behaviors and sprites.
-- `Chest.py`: Chest and inventory system.
-- `doorClass.py`: Door logic and level progression.
-- `level.py`: Level transition logic.
-- Image files (`*.png`, `*.jpg`): Sprites for player, enemies, items, backgrounds, etc.
+### Core Files
+- `game.py`: Main game loop and state management
+- `config.py`: Centralized configuration and constants
+- `player.py`: Player mechanics and controls
+- `item.py`: Item and weapon logic
+- `enemy.py`: Enemy behaviors and sprites
+- `chest.py`: Chest and inventory system
+- `door.py`: Door logic and level progression
+- `inventory.py`: Inventory management system
+
+### Assets
+- `*.png`, `*.jpg`: Sprites for player, enemies, items, backgrounds, etc.
+
+## Code Quality Improvements
+
+The codebase has been completely rewritten and optimized with the following improvements:
+
+- **Centralized Configuration:** All constants moved to `config.py`
+- **Type Annotations:** Full type hints throughout the codebase
+- **Modular Design:** Clean separation of concerns with dedicated modules
+- **Documentation:** Comprehensive docstrings for all classes and methods
+- **Error Handling:** Robust error handling and fallback mechanisms
+- **Code Reusability:** Eliminated code duplication and redundant files
+- **Modern Python:** Uses Python 3.10+ features and best practices
 
 ## Requirements
 
-- Python 3.x
+- Python 3.10+
 - Pygame
 
 Install dependencies with:
@@ -58,8 +74,18 @@ pip install pygame
 
 From the `Escape-WE-Project` directory, run:
 ```bash
-python Environment.py
+python game.py
 ```
+
+## Development
+
+The codebase follows modern Python development practices:
+
+- **Type Safety:** Full type annotations for better IDE support and error catching
+- **Documentation:** Google-style docstrings for all public APIs
+- **Modularity:** Each class has a single responsibility
+- **Configuration:** Centralized settings for easy modification
+- **Asset Management:** Centralized asset loading with error handling
 
 ## Credits
 
