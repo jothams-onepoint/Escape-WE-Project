@@ -31,10 +31,15 @@ screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption('Escape')
 
 # Load background images
-MENU_BACKGROUND = pygame.image.load('menu.jpg').convert()
-MENU_BACKGROUND = pygame.transform.scale(MENU_BACKGROUND, (SCREEN_WIDTH, SCREEN_HEIGHT))
-GAME_BACKGROUND = pygame.image.load('background.png').convert()
-GAME_BACKGROUND = pygame.transform.scale(GAME_BACKGROUND, (SCREEN_WIDTH, SCREEN_HEIGHT))
+try:
+    MENU_BACKGROUND = pygame.image.load('menu.jpg').convert()
+    MENU_BACKGROUND = pygame.transform.scale(MENU_BACKGROUND, (SCREEN_WIDTH, SCREEN_HEIGHT))
+    GAME_BACKGROUND = pygame.image.load('background.png').convert()
+    GAME_BACKGROUND = pygame.transform.scale(GAME_BACKGROUND, (SCREEN_WIDTH, SCREEN_HEIGHT))
+except:
+    GAME_BACKGROUND = pygame.surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+    GAME_BACKGROUND.fill(150,70,0)
+
 
 # Load and scale enemy sprites
 enemy1_image = pygame.image.load('enemy1.png').convert_alpha()
