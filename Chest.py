@@ -6,7 +6,7 @@ Handles chest interactions and item spawning.
 import pygame
 from typing import Optional, Dict, Any
 from config import (
-    SCREEN_HEIGHT, CHEST_SIZE, load_image, ASSETS
+    SCREEN_HEIGHT, CHEST_SIZE, load_image, ASSETS, WEAPON_SIZE
 )
 from item import spawn_weapon
 
@@ -114,7 +114,8 @@ def handle_click(chest: Chest, player_inventory, placing_item: Dict[str, Any], p
             item_name = chest.open_chest()
             if item_name:
                 from item import Item
-                placing_item["item"] = Item(item_name, "Weapon", (0, 0))
+                sword_sprite = load_image(ASSETS['sword'], WEAPON_SIZE)
+                placing_item["item"] = Item(item_name, "Weapon", (0, 0), WEAPON_SIZE, sword_sprite)
                 placing_item["display_text"] = None
                 placing_item["display_rect"] = None
 

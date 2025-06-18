@@ -6,7 +6,6 @@ Handles weapons, keys, and other collectible items.
 import pygame
 import math
 import random
-import time
 from typing import Optional, Tuple
 from config import (
     SCREEN_WIDTH, SCREEN_HEIGHT, ITEM_SIZE, WEAPON_SIZE, KEY_SIZE,
@@ -64,9 +63,6 @@ class Item:
         self.attack_animation = False
         self.attack_progress = 0
         self.attack_speed = 0.2
-        
-        self.base_y = position[1]  # For bobbing effect
-        self.bobbing_phase = random.uniform(0, 2 * math.pi)  # Desync bobbing
 
     def draw(self, screen: pygame.Surface, player_position: Optional[Tuple[int, int]] = None) -> None:
         """
@@ -115,19 +111,7 @@ class Item:
     def _draw_world(self, screen: pygame.Surface) -> None:
         """Draw item in the world (not equipped)."""
         if self.item_type == "Weapon":
-            y_offset = 0
-            if not self.is_picked_up:
-                # Bobbing effect: sine wave based on time
-                t = time.time() + self.bobbing_phase
-                amplitude = 8  # pixels
-                period = 1.2  # seconds
-                y_offset = amplitude * math.sin(2 * math.pi * t / period)
-                # Use base_y as the center for bobbing
-                draw_y = self.base_y + y_offset
-                draw_pos = (self.rect.x, int(draw_y))
-            else:
-                draw_pos = self.rect.topleft
-            screen.blit(self.image, draw_pos)
+            screen.blit(self.image, self.rect.topleft)
         elif self.item_type == "Key" and self.sprite:
             screen.blit(self.sprite, self.rect.topleft)
 
@@ -198,7 +182,6 @@ class Item:
         if self.rect.y >= floor_level:
             self.rect.y = floor_level
             self.y_velocity = 0
-            self.base_y = self.rect.y  # Update base_y for bobbing
 
 
 def spawn_key() -> Item:

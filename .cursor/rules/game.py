@@ -241,27 +241,12 @@ class Game:
         # Chest interaction
         elif chest.rect.colliderect(self.player.rect):
             item_name = chest.open_chest()
-            if item_name and not self.player.equipped_item and chest.items:
-                # Equip the item directly if player is not holding anything
-                item = chest.items[0]
-                self.player.equip_item(item)
-                chest.remove_item()
-            elif item_name:
-                # If player is holding something, fallback to old placing_item logic
+            if item_name:
                 from item import Item
                 new_item = Item(item_name, "Weapon", (0, 0), WEAPON_SIZE, self.sword_sprite.copy())
                 self.placing_item["item"] = new_item
                 self.placing_item["display_text"] = self.player_inventory.font.render(item_name, True, BLACK)
                 self.placing_item["display_rect"] = self.placing_item["display_text"].get_rect(center=chest.rect.center)
-        # Dropped item pickup (sword)
-        elif not self.player.equipped_item:
-            for item in self.dropped_items[:]:
-                # Use rect collision for proximity
-                if item.item_type == "Weapon" and item.rect.colliderect(self.player.rect):
-                    self.player.equip_item(item)
-                    item.is_picked_up = True
-                    self.dropped_items.remove(item)
-                    break
 
     def _handle_mouse_click(self, enemies: List[Enemy], chest: Chest) -> None:
         """
@@ -277,14 +262,10 @@ class Game:
         for i in range(self.player_inventory.max_slots):
             slot_rect = self.player_inventory.get_slot_rect(i)
             if slot_rect.collidepoint(mouse_pos):
-                # Allow moving equipped item to inventory if slot is empty
-                if self.player_inventory.slots[i] is None and self.player.equipped_item:
+                if (self.player_inventory.slots[i] is None and 
+                    self.player.equipped_item):
                     self.player_inventory.add_item(self.player.equipped_item, i)
-                    self.player.unequip_item()
-                # Allow re-equipping item from inventory if slot is not empty and player is not holding anything
-                elif self.player_inventory.slots[i] is not None and not self.player.equipped_item:
-                    self.player.equip_item(self.player_inventory.slots[i])
-                    self.player_inventory.remove_item(i)
+                self.player.equip_item(self.player_inventory.slots[i])
                 break
 
         # Attack with weapon
@@ -431,6 +412,10 @@ class Game:
         for item in self.dropped_items[:]:
             item.apply_gravity()
             item.draw(self.screen)
+            if item.is_collision(self.player) and not self.player.equipped_item:
+                if item.item_type == "Weapon":
+                    self.player.equip_item(item)
+                    self.dropped_items.remove(item)
 
         # Draw enemies
         for enemy in enemies:
