@@ -67,6 +67,13 @@ class Item:
         
         self.base_y = position[1]  # For bobbing effect
         self.bobbing_phase = random.uniform(0, 2 * math.pi)  # Desync bobbing
+        # Always initialize dropping animation attributes for all items
+        self.dropping = False
+        self.drop_start_y = position[1]
+        self.drop_target_y = None
+        self.drop_progress = 0.0
+        self.drop_duration = 0.35  # seconds
+        self.drop_start_time = None
 
     def draw(self, screen: pygame.Surface, player_position: Optional[Tuple[int, int]] = None) -> None:
         """
@@ -116,7 +123,15 @@ class Item:
         """Draw item in the world (not equipped)."""
         if self.item_type == "Weapon":
             y_offset = 0
-            if not self.is_picked_up:
+            if self.dropping and self.drop_target_y is not None:
+                # Animate from drop_start_y to drop_target_y
+                elapsed = time.time() - self.drop_start_time if self.drop_start_time else 0
+                t = min(elapsed / self.drop_duration, 1.0)
+                # Ease out cubic for smooth landing
+                t_eased = 1 - pow(1 - t, 3)
+                draw_y = self.drop_start_y + (self.drop_target_y - self.drop_start_y) * t_eased
+                draw_pos = (self.rect.x, int(draw_y))
+            elif not self.is_picked_up:
                 # Bobbing effect: sine wave based on time
                 t = time.time() + self.bobbing_phase
                 amplitude = 8  # pixels
@@ -129,7 +144,18 @@ class Item:
                 draw_pos = self.rect.topleft
             screen.blit(self.image, draw_pos)
         elif self.item_type == "Key" and self.sprite:
-            screen.blit(self.sprite, self.rect.topleft)
+            y_offset = 0
+            if not self.is_picked_up:
+                # Bobbing effect: sine wave based on time
+                t = time.time() + self.bobbing_phase
+                amplitude = 8  # pixels
+                period = 1.2  # seconds
+                y_offset = amplitude * math.sin(2 * math.pi * t / period)
+                draw_y = self.base_y + y_offset
+                draw_pos = (self.rect.x, int(draw_y))
+            else:
+                draw_pos = self.rect.topleft
+            screen.blit(self.sprite, draw_pos)
 
     def rotate(self, angle: float) -> None:
         """
