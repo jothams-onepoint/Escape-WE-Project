@@ -57,7 +57,7 @@ class Item:
         self.rect = self.image.get_rect(center=position)
         
         # Equipment properties
-        self.equipped_offset = (50, 90)
+        self.equipped_offset = (10, 90)  # Move sword closer to player
         self.rotation_angle = 0
         
         # Combat properties
@@ -75,43 +75,47 @@ class Item:
         self.drop_duration = 0.35  # seconds
         self.drop_start_time = None
 
-    def draw(self, screen: pygame.Surface, player_position: Optional[Tuple[int, int]] = None) -> None:
+    def draw(self, screen: pygame.Surface, player_position: Optional[Tuple[int, int]] = None, facing_right: bool = True) -> None:
         """
         Draw the item on the screen.
         
         Args:
             screen: Pygame surface to draw on
             player_position: Player position for equipped items
+            facing_right: Whether the player is facing right (for weapon positioning)
         """
-        if self.is_picked_up and player_position:
-            self._draw_equipped(screen, player_position)
+        if self.is_picked_up and player_position is not None:
+            self._draw_equipped(screen, player_position, facing_right)
         else:
             self._draw_world(screen)
 
-    def _draw_equipped(self, screen: pygame.Surface, player_position: Tuple[int, int]) -> None:
+    def _draw_equipped(self, screen: pygame.Surface, player_position: Tuple[int, int], facing_right: bool) -> None:
         """Draw item when equipped by player."""
         if self.item_type == "Weapon":
-            # Calculate position based on player and rotation
-            center_x = player_position[0] + self.equipped_offset[0]
-            center_y = player_position[1] + self.equipped_offset[1]
-            
+            # Position sword relative to the center of the player sprite
+            player_center_x = player_position[0] + self.rect.width // 2
+            player_center_y = player_position[1] + self.rect.height // 2
+            offset_x_right = 105  # for right hand (slightly decreased)
+            offset_x_left = 10    # for left hand (slightly decreased)
+            if facing_right:
+                center_x = player_center_x + offset_x_right
+            else:
+                center_x = player_center_x - offset_x_left
+            center_y = player_center_y + 20  # Slightly below center for hand position
             # Handle attack animation
             if self.attack_animation:
                 self.attack_progress += self.attack_speed
                 if self.attack_progress >= 1:
                     self.attack_animation = False
                     self.attack_progress = 0
-                
                 # Add swing animation
                 swing_angle = 45 * (1 - self.attack_progress)
                 self.rotation_angle += swing_angle
-            
             # Rotate and draw
             rotated_image = pygame.transform.rotate(self.original_image, self.rotation_angle)
             rotated_rect = rotated_image.get_rect(center=(center_x, center_y))
             screen.blit(rotated_image, rotated_rect)
             self.rect = rotated_rect
-            
         elif self.item_type == "Key" and self.sprite:
             # Draw key at equipped position
             screen.blit(self.sprite, (

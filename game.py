@@ -11,12 +11,12 @@ from typing import List, Dict, Any
 from config import (
     SCREEN_WIDTH, SCREEN_HEIGHT, FPS, WHITE, BLACK, RED,
     BUTTON_WIDTH, BUTTON_HEIGHT, BUTTON_TEXT_SIZE, TOTAL_LEVELS,
-    MAX_BACKGROUND_DUPLICATES, NORMAL_SPEED, load_image, ASSETS, DOOR_SIZE, WEAPON_SIZE
+    MAX_BACKGROUND_DUPLICATES, NORMAL_SPEED, load_image, ASSETS, DOOR_SIZE, WEAPON_SIZE, ENEMY_SIZE
 )
 from player import Player
-from enemy import Enemy
+from Enemy import Enemy
 from item import spawn_key
-from chest import Chest, handle_click
+from Chest import Chest, handle_click
 from door import Door
 from inventory import Inventory
 
@@ -52,7 +52,7 @@ class Game:
         self._load_assets()
         
         # Initialize game objects
-        self.player = Player("Hero", (100, SCREEN_HEIGHT - 250), 50)
+        self.player = Player("Hero", (100, SCREEN_HEIGHT - ENEMY_SIZE), 50)
         self.player_inventory = Inventory()
         self.dropped_items = []
         self.placing_item: dict[str, Any] = {"item": None, "display_text": None, "display_rect": None}
@@ -294,14 +294,16 @@ class Game:
             for enemy in enemies[:]:
                 if damage > 0 and self.player.equipped_item.is_collision(enemy):
                     print(f"Dealt {damage} damage!")
-                    enemies.remove(enemy)
+                    defeated = enemy.take_damage(damage)
+                    if defeated:
+                        enemies.remove(enemy)
 
         # Chest interaction
         handle_click(chest, self.player_inventory, self.placing_item, self.player)
 
     def _reset_level(self) -> None:
         """Reset the current level state."""
-        self.player.position = pygame.Vector2((100, SCREEN_HEIGHT - 250))
+        self.player.position = pygame.Vector2((100, SCREEN_HEIGHT - ENEMY_SIZE))
         self.player.rect.topleft = (int(self.player.position.x), int(self.player.position.y))
         self.player.has_key = False
         self.player_inventory.clear()

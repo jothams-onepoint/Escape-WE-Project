@@ -6,6 +6,7 @@ Handles player movement, combat, inventory, and interactions.
 import pygame
 import math
 import time
+import random
 from typing import Optional, Tuple
 from config import (
     SCREEN_WIDTH, SCREEN_HEIGHT, PLAYER_SIZE, PLAYER_SPEED, 
@@ -250,10 +251,12 @@ class Player(pygame.sprite.Sprite):
         if (self.equipped_item and 
             self.equipped_item.item_type == "Weapon" and
             current_time - self.last_attack_time >= self.attack_cooldown):
-            
             self.last_attack_time = current_time
             self.equipped_item.start_attack()
-            return 50  # Base damage
+            # Crit logic: 25% chance for 20 damage, else 10 damage
+            if random.random() < 0.25:
+                return 20  # Crit
+            return 10  # Normal hit
         return 0
 
     def update_cursor_pos(self, mouse_pos: Tuple[int, int]) -> None:
@@ -307,4 +310,4 @@ class Player(pygame.sprite.Sprite):
 
         # Draw equipped item
         if self.equipped_item:
-            self.equipped_item.draw(screen, self.rect.topleft) 
+            self.equipped_item.draw(screen, self.rect.topleft, self.facing_right) 

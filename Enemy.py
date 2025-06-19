@@ -5,6 +5,7 @@ Handles enemy movement, behavior, and combat.
 
 import pygame
 import random
+import time
 from typing import Tuple
 from config import (
     SCREEN_WIDTH, SCREEN_HEIGHT, ENEMY_SIZE, ENEMY_SPEED, 
@@ -31,8 +32,11 @@ class Enemy:
         self.move_duration = ENEMY_MOVE_DURATION
         self.image = self._get_enemy_image()
         self.rect = self.image.get_rect(topleft=(self.x, self.y))
-        self.health = 100
+        self.health = 50
+        self.max_health = 50
         self.drops_key = random.choice([True, False])
+        self.shake_timer = 0.0  # Time when shake ends
+        self.is_shaking = False
 
     def _get_enemy_image(self) -> pygame.Surface:
         enemy_images = {
@@ -55,14 +59,33 @@ class Enemy:
         self.rect.topleft = (self.x, self.y)
 
     def draw(self, screen: pygame.Surface) -> None:
+        # Handle shake animation
+        shake_offset = (0, 0)
+        if self.is_shaking:
+            if time.time() < self.shake_timer:
+                shake_offset = (random.randint(-8, 8), random.randint(-8, 8))
+            else:
+                self.is_shaking = False
+        draw_rect = self.rect.move(shake_offset)
         if self.current_direction == 1:
-            screen.blit(self.image, self.rect)
+            screen.blit(self.image, draw_rect)
         else:
             flipped_image = pygame.transform.flip(self.image, True, False)
-            screen.blit(flipped_image, self.rect)
+            screen.blit(flipped_image, draw_rect)
+        bar_width = self.rect.width
+        bar_height = 6
+        health_ratio = max(self.health, 0) / self.max_health
+        health_bar_width = int(bar_width * health_ratio)
+        bar_x = draw_rect.x
+        bar_y = draw_rect.y - bar_height - 4
+        pygame.draw.rect(screen, (200, 0, 0), (bar_x, bar_y, bar_width, bar_height))
+        pygame.draw.rect(screen, (0, 200, 0), (bar_x, bar_y, health_bar_width, bar_height))
 
     def take_damage(self, damage: int) -> bool:
         self.health -= damage
+        # Start shake animation for 300ms
+        self.is_shaking = True
+        self.shake_timer = time.time() + 0.2
         if self.health <= 0:
             print(f"Enemy defeated! Drops key: {self.drops_key}")
             return True
