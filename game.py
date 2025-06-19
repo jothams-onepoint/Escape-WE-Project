@@ -246,11 +246,10 @@ class Game:
                 item = chest.items[0]
                 self.player.equip_item(item)
                 chest.remove_item()
-            elif item_name:
-                # If player is holding something, fallback to old placing_item logic
-                from item import Item
-                new_item = Item(item_name, "Weapon", (0, 0), WEAPON_SIZE, self.sword_sprite.copy())
-                self.placing_item["item"] = new_item
+            elif item_name and chest.items:
+                # If player is holding something, use the actual Item instance from the chest
+                item = chest.items[0]
+                self.placing_item["item"] = item
                 self.placing_item["display_text"] = self.player_inventory.font.render(item_name, True, BLACK)
                 self.placing_item["display_rect"] = self.placing_item["display_text"].get_rect(center=chest.rect.center)
         # Dropped item pickup (sword)

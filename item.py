@@ -230,6 +230,36 @@ class Item:
             self.y_velocity = 0
             self.base_y = self.rect.y  # Update base_y for bobbing
 
+    def reset_for_equip(self, player_center: tuple[int, int]) -> None:
+        """Reset item state for equipping by player."""
+        self.is_picked_up = True
+        self.rotation_angle = 0
+        self.attack_animation = False
+        self.attack_progress = 0
+        self.y_velocity = 0
+        self.dropping = False
+        self.drop_target_y = None
+        self.drop_progress = 0.0
+        self.drop_start_time = None
+        self.rect.center = player_center
+        self.base_y = self.rect.y
+        self.image = self.original_image.copy()
+
+    def reset_for_drop(self, drop_pos: tuple[int, int]) -> None:
+        """Reset item state for dropping into the world."""
+        self.is_picked_up = False
+        self.y_velocity = 0
+        self.dropping = False
+        self.drop_target_y = None
+        self.drop_progress = 0.0
+        self.drop_start_time = None
+        self.rect.center = drop_pos
+        self.base_y = self.rect.y
+        self.rotation_angle = 0
+        self.attack_animation = False
+        self.attack_progress = 0
+        self.image = self.original_image.copy()
+
 
 def spawn_key() -> Item:
     """

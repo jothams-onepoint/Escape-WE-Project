@@ -216,10 +216,11 @@ class Player(pygame.sprite.Sprite):
     def equip_item(self, item) -> None:
         """
         Equip an item.
-        
         Args:
             item: Item to equip
         """
+        if item:
+            item.reset_for_equip(self.rect.center)
         self.equipped_item = item
         if item:
             print(f"{self.name} equipped {item.item_type}")
@@ -274,20 +275,12 @@ class Player(pygame.sprite.Sprite):
     def drop_item(self):
         """
         Drop the currently equipped item.
-        
         Returns:
             The dropped item or None
         """
         if self.equipped_item:
-            # Create a new item at player's position
-            from item import Item  # Import here to avoid circular imports
-            dropped_item = Item(
-                self.equipped_item.name,
-                self.equipped_item.item_type,
-                (self.rect.centerx, self.rect.centery),
-                sprite=self.equipped_item.original_image.copy()
-            )
-            dropped_item.is_picked_up = False
+            dropped_item = self.equipped_item
+            dropped_item.reset_for_drop((self.rect.centerx, self.rect.centery))
             self.equipped_item = None
             return dropped_item
         return None

@@ -112,10 +112,8 @@ def handle_click(chest: Chest, player_inventory, placing_item: Dict[str, Any], p
     if chest.items and not chest.opened:
         if chest.rect.collidepoint(mouse_pos):
             item_name = chest.open_chest()
-            if item_name:
-                from item import Item
-                sword_sprite = load_image(ASSETS['sword'], WEAPON_SIZE)
-                placing_item["item"] = Item(item_name, "Weapon", (0, 0), WEAPON_SIZE, sword_sprite)
+            if item_name and chest.items:
+                placing_item["item"] = chest.items[0]
                 placing_item["display_text"] = None
                 placing_item["display_rect"] = None
 
