@@ -483,8 +483,8 @@ class Game:
     def _draw_menu(self) -> None:
         """Draw the menu screen."""
         self.game_surface.blit(self.menu_background, (0, 0))
-        self._draw_text("Escape", BLACK, self.font_title, 
-                       pygame.Rect(0, 50, BASE_SCREEN_WIDTH, 100), surface=self.game_surface)
+        # self._draw_text("Escape", BLACK, self.font_title, 
+        #                pygame.Rect(0, 50, BASE_SCREEN_WIDTH, 100), surface=self.game_surface)
         
         # Draw buttons
         start_button_surf, start_button_text = self._create_button(
