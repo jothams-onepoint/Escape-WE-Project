@@ -75,6 +75,14 @@ class Player(pygame.sprite.Sprite):
         # Mouse tracking
         self.cursor_pos = pygame.Vector2(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
 
+        # Invulnerability and shaking state
+        self.is_invulnerable: bool = False
+        self.invulnerable_until: float = 0.0
+        self.is_shaking: bool = False
+        self.shake_end_time: float = 0.0
+        self._shake_offset: Tuple[int, int] = (0, 0)
+        self._last_shake_time: float = 0.0
+
     def pick_up_key(self, key) -> None:
         """
         Pick up a key item.
@@ -111,11 +119,26 @@ class Player(pygame.sprite.Sprite):
 
     def update(self, is_scrolling: bool = False) -> None:
         """
-        Update player position and state.
+        Update player position, state, invulnerability, and shaking.
         
         Args:
             is_scrolling: Whether the screen is currently scrolling
         """
+        # Handle invulnerability and shaking timers
+        current_time = time.time()
+        if self.is_shaking and current_time >= self.shake_end_time:
+            self.is_shaking = False
+        if self.is_invulnerable and current_time >= self.invulnerable_until:
+            self.is_invulnerable = False
+        # Update shake offset if shaking
+        if self.is_shaking:
+            # Shake every frame, random offset
+            if current_time - self._last_shake_time > 0.02:
+                import random
+                self._shake_offset = (random.randint(-8, 8), random.randint(-8, 8))
+                self._last_shake_time = current_time
+        else:
+            self._shake_offset = (0, 0)
         # Handle jumping and gravity
         if self.is_jumping:
             self.velocity_y += GRAVITY
@@ -192,24 +215,30 @@ class Player(pygame.sprite.Sprite):
 
     def take_damage(self, damage: float) -> bool:
         """
-        Apply damage to the player.
-        
+        Apply damage to the player, with invulnerability and shaking logic.
         Args:
-            damage: Amount of damage to apply
-            
+            damage: Amount of damage to apply (ignored, always 10)
         Returns:
             True if player died, False otherwise
         """
-        self.health -= damage
+        current_time = time.time()
+        if self.is_invulnerable:
+            return False
+        # Always apply 10 damage per hit
+        self.health -= 10
+        # Start shaking for 0.7s
+        self.is_shaking = True
+        self.shake_end_time = current_time + 0.7
+        # Become invulnerable for 0.7 + 0.3 = 1.0s
+        self.is_invulnerable = True
+        self.invulnerable_until = current_time + 1.0
         if self.health <= 0:
             self.lives -= 1
             self.health = PLAYER_MAX_HEALTH
             print(f"Lost a life! Lives left: {self.lives}")
-            
             if self.lives <= 0:
                 print("Game Over! You have lost.")
-                self.lives = PLAYER_LIVES
-                self.health = PLAYER_MAX_HEALTH
+                # Do not reset lives here; let the game handle it on new game
                 return True
         return False
 
@@ -287,20 +316,22 @@ class Player(pygame.sprite.Sprite):
 
     def draw(self, screen: pygame.Surface) -> None:
         """
-        Draw the player on the screen.
-        
+        Draw the player on the screen, with shaking (no flicker) and invulnerability effect.
         Args:
             screen: Pygame surface to draw on
         """
+        # Calculate draw position with shake offset
+        draw_pos = (self.rect.x + self._shake_offset[0], self.rect.y + self._shake_offset[1])
         # Draw player sprite with proper facing direction
         if self.is_moving_right:
             flipped_image = pygame.transform.flip(self.image, True, False)
             flipped_rect = flipped_image.get_rect()
-            flipped_rect.topleft = self.rect.topleft
+            flipped_rect.topleft = draw_pos
+            flipped_image.set_alpha(255)  # Always fully opaque
             screen.blit(flipped_image, flipped_rect)
         else:
-            screen.blit(self.image, self.rect)
-
+            self.image.set_alpha(255)  # Always fully opaque
+            screen.blit(self.image, draw_pos)
         # Draw equipped item
         if self.equipped_item:
-            self.equipped_item.draw(screen, self.rect.topleft, self.facing_right) 
+            self.equipped_item.draw(screen, draw_pos, self.facing_right)
