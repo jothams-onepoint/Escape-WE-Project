@@ -11,7 +11,8 @@ from typing import List, Dict, Any
 from config import (
     SCREEN_WIDTH, SCREEN_HEIGHT, FPS, WHITE, BLACK, RED,
     BUTTON_WIDTH, BUTTON_HEIGHT, BUTTON_TEXT_SIZE, TOTAL_LEVELS,
-    MAX_BACKGROUND_DUPLICATES, NORMAL_SPEED, load_image, ASSETS, DOOR_SIZE, WEAPON_SIZE, ENEMY_SIZE, BACKGROUND_SIZE
+    MAX_BACKGROUND_DUPLICATES, NORMAL_SPEED, load_image, ASSETS, DOOR_SIZE, WEAPON_SIZE, ENEMY_SIZE, BACKGROUND_SIZE,
+    SCALE, BASE_SCREEN_WIDTH, BASE_SCREEN_HEIGHT, PLAYER_SIZE, ITEM_SIZE, KEY_SIZE, CHEST_SIZE, INVENTORY_SLOT_WIDTH, INVENTORY_SLOT_HEIGHT, INVENTORY_SLOT_MARGIN
 )
 from player import Player
 from Enemy import Enemy
@@ -41,8 +42,20 @@ class Game:
     def __init__(self):
         """Initialize the game."""
         pygame.init()
-        self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+        # --- FULLSCREEN & ASPECT RATIO LOGIC ---
+        display_info = pygame.display.Info()
+        self.fullscreen_width, self.fullscreen_height = display_info.current_w, display_info.current_h
+        self.game_surface = pygame.Surface((BASE_SCREEN_WIDTH, BASE_SCREEN_HEIGHT))
+        self.screen = pygame.display.set_mode((self.fullscreen_width, self.fullscreen_height), pygame.FULLSCREEN)
         pygame.display.set_caption('Escape')
+        # Calculate scale and offsets for aspect ratio
+        scale_x = self.fullscreen_width / BASE_SCREEN_WIDTH
+        scale_y = self.fullscreen_height / BASE_SCREEN_HEIGHT
+        self.final_scale = min(scale_x, scale_y)
+        self.scaled_width = int(BASE_SCREEN_WIDTH * self.final_scale)
+        self.scaled_height = int(BASE_SCREEN_HEIGHT * self.final_scale)
+        self.offset_x = (self.fullscreen_width - self.scaled_width) // 2
+        self.offset_y = (self.fullscreen_height - self.scaled_height) // 2
         
         # Game state
         self.clock = pygame.time.Clock()
@@ -53,7 +66,7 @@ class Game:
         self._load_assets()
         
         # Initialize game objects
-        self.player = Player("Hero", (100, SCREEN_HEIGHT - ENEMY_SIZE), 50)
+        self.player = Player("Hero", (100, SCREEN_HEIGHT - ENEMY_SIZE), PLAYER_SIZE)
         self.player_inventory = Inventory()
         self.dropped_items = []
         self.placing_item: dict[str, Any] = {"item": None, "display_text": None, "display_rect": None}
@@ -73,7 +86,7 @@ class Game:
         """Load game assets."""
         self.menu_background = load_image(ASSETS['menu'], (SCREEN_WIDTH, SCREEN_HEIGHT))
         self.game_background = load_image(ASSETS['background'], BACKGROUND_SIZE)
-        self.sword_sprite = load_image(ASSETS['sword'], (75, 75))
+        self.sword_sprite = load_image(ASSETS['sword'], WEAPON_SIZE)
 
     def _setup_ui(self) -> None:
         """Setup UI elements."""
@@ -120,30 +133,25 @@ class Game:
         text_rect = text_render.get_rect(center=rect.center)
         return button_surf, text_render
 
-    def _draw_text(self, text: str, color: tuple, font: pygame.font.Font, rect: pygame.Rect) -> None:
+    def _draw_text(self, text: str, color: tuple, font: pygame.font.Font, rect: pygame.Rect, surface=None) -> None:
         """
-        Draw centered text on screen.
-        
-        Args:
-            text: Text to draw
-            color: Text color
-            font: Font to use
-            rect: Rectangle to center text in
+        Draw centered text on screen or given surface.
         """
+        if surface is None:
+            surface = self.screen
         text_obj = font.render(text, True, color)
         text_rect = text_obj.get_rect(center=rect.center)
-        self.screen.blit(text_obj, text_rect)
+        surface.blit(text_obj, text_rect)
 
-    def _render_health(self, player: Player) -> None:
+    def _render_health(self, player: Player, surface=None) -> None:
         """
-        Render player health on screen.
-        
-        Args:
-            player: Player instance
+        Render player health on screen or given surface.
         """
+        if surface is None:
+            surface = self.screen
         health_text = self.font.render(f"Health: {player.health}", True, RED)
         health_rect = health_text.get_rect(topleft=(10, 10))
-        self.screen.blit(health_text, health_rect)
+        surface.blit(health_text, health_rect)
 
     def _handle_menu_events(self, event: pygame.event.Event) -> bool:
         """
@@ -156,7 +164,7 @@ class Game:
             True if game should continue, False to quit
         """
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            mouse_pos = event.pos
+            mouse_pos = self._get_game_mouse_pos()
             if self.start_button_rect.collidepoint(mouse_pos):
                 self.current_screen = "game"
                 self._reset_level()
@@ -210,7 +218,7 @@ class Game:
             self._handle_mouse_click(enemies, chest)
             
         elif event.type == pygame.MOUSEMOTION:
-            self.player.update_cursor_pos(event.pos)
+            self.player.update_cursor_pos(self._get_game_mouse_pos())
             self.player.update(False)
             
         return True
@@ -268,7 +276,7 @@ class Game:
             enemies: List of enemies
             chest: Chest instance
         """
-        mouse_pos = pygame.mouse.get_pos()
+        mouse_pos = self._get_game_mouse_pos()
         
         # Inventory slot clicks
         for i in range(self.player_inventory.max_slots):
@@ -377,9 +385,9 @@ class Game:
 
     def _draw_menu(self) -> None:
         """Draw the menu screen."""
-        self.screen.blit(self.menu_background, (0, 0))
+        self.game_surface.blit(self.menu_background, (0, 0))
         self._draw_text("Escape", BLACK, self.font_title, 
-                       pygame.Rect(0, 50, SCREEN_WIDTH, 100))
+                       pygame.Rect(0, 50, BASE_SCREEN_WIDTH, 100), surface=self.game_surface)
         
         # Draw buttons
         start_button_surf, start_button_text = self._create_button(
@@ -389,16 +397,17 @@ class Game:
             self.exit_button_rect, "Exit"
         )
         
-        self.screen.blit(start_button_surf, self.start_button_rect)
-        self.screen.blit(start_button_text, start_button_text.get_rect(
+        self.game_surface.blit(start_button_surf, self.start_button_rect)
+        self.game_surface.blit(start_button_text, start_button_text.get_rect(
             center=self.start_button_rect.center
         ))
-        self.screen.blit(exit_button_surf, self.exit_button_rect)
-        self.screen.blit(exit_button_text, exit_button_text.get_rect(
+        self.game_surface.blit(exit_button_surf, self.exit_button_rect)
+        self.game_surface.blit(exit_button_text, exit_button_text.get_rect(
             center=self.exit_button_rect.center
         ))
         
-        self.screen.blit(self.cursor_surface, pygame.mouse.get_pos())
+        self.game_surface.blit(self.cursor_surface, self._get_game_mouse_pos())
+        self._blit_to_fullscreen()
 
     def _draw_game(self, enemies: List[Enemy], chest: Chest, 
                   door: Door, key, total_scroll: int) -> None:
@@ -413,62 +422,81 @@ class Game:
             total_scroll: Current scroll offset
         """
         # Draw single continuous background
-        self.screen.blit(self.game_background, (-total_scroll, 0))
+        self.game_surface.blit(self.game_background, (-total_scroll, 0))
 
         # Draw dropped items
         for item in self.dropped_items[:]:
             item.apply_gravity()
-            item.draw(self.screen)
+            item.draw(self.game_surface)
 
         # Draw enemies
         for enemy in enemies:
             enemy.update()
-            enemy.draw(self.screen)
+            enemy.draw(self.game_surface)
             if enemy.rect.colliderect(self.player.rect):
                 dead = self.player.take_damage(0.5)
                 if dead:
                     self.current_screen = "menu"
 
         # Draw game objects
-        door.draw(self.screen, total_scroll)
-        self.player.draw(self.screen)
-        chest.draw(self.screen)
+        door.draw(self.game_surface, total_scroll)
+        self.player.draw(self.game_surface)
+        chest.draw(self.game_surface)
         
         if not key.is_picked_up:
-            key.draw(self.screen)
+            key.draw(self.game_surface)
             
-        self.player_inventory.display_inventory(self.screen)
+        self.player_inventory.display_inventory(self.game_surface)
         
         if self.player.equipped_item:
-            self.player.equipped_item.draw(self.screen)
+            self.player.equipped_item.draw(self.game_surface)
 
         # Draw UI elements
         if self.placing_item["display_text"] and self.placing_item["display_rect"] is not None:
-            self.screen.blit(self.placing_item["display_text"], self.placing_item["display_rect"])
+            self.game_surface.blit(self.placing_item["display_text"], self.placing_item["display_rect"])
 
         level_text = self.level_font.render(f"Level: {self.current_level}", True, BLACK)
-        level_rect = level_text.get_rect(centerx=SCREEN_WIDTH // 2, top=10)
-        self.screen.blit(level_text, level_rect)
+        level_rect = level_text.get_rect(centerx=BASE_SCREEN_WIDTH // 2, top=10)
+        self.game_surface.blit(level_text, level_rect)
 
-        self._render_health(self.player)
-        self.screen.blit(self.cursor_surface, pygame.mouse.get_pos())
+        self._render_health(self.player, surface=self.game_surface)
+        self.game_surface.blit(self.cursor_surface, self._get_game_mouse_pos())
+        self._blit_to_fullscreen()
 
     def _draw_win_screen(self) -> None:
         """Draw the win screen."""
-        self.screen.blit(self.menu_background, (0, 0))
+        self.game_surface.blit(self.menu_background, (0, 0))
         win_text = self.font_title.render("Congratulations! You Win!", True, WHITE)
-        win_rect = win_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 3))
-        self.screen.blit(win_text, win_rect)
+        win_rect = win_text.get_rect(center=(BASE_SCREEN_WIDTH // 2, BASE_SCREEN_HEIGHT // 3))
+        self.game_surface.blit(win_text, win_rect)
 
         main_menu_button_surf, main_menu_button_text = self._create_button(
             self.main_menu_button_rect, "Main Menu"
         )
-        self.screen.blit(main_menu_button_surf, self.main_menu_button_rect)
-        self.screen.blit(main_menu_button_text, main_menu_button_text.get_rect(
+        self.game_surface.blit(main_menu_button_surf, self.main_menu_button_rect)
+        self.game_surface.blit(main_menu_button_text, main_menu_button_text.get_rect(
             center=self.main_menu_button_rect.center
         ))
 
-        self.screen.blit(self.cursor_surface, pygame.mouse.get_pos())
+        self.game_surface.blit(self.cursor_surface, self._get_game_mouse_pos())
+        self._blit_to_fullscreen()
+
+    def _blit_to_fullscreen(self):
+        """Scale and blit the game surface to the fullscreen display, preserving aspect ratio."""
+        scaled_surface = pygame.transform.smoothscale(self.game_surface, (self.scaled_width, self.scaled_height))
+        self.screen.fill(BLACK)
+        self.screen.blit(scaled_surface, (self.offset_x, self.offset_y))
+        pygame.display.flip()
+
+    def _get_game_mouse_pos(self):
+        """Convert fullscreen mouse position to game surface coordinates."""
+        mx, my = pygame.mouse.get_pos()
+        gx = int((mx - self.offset_x) / self.final_scale)
+        gy = int((my - self.offset_y) / self.final_scale)
+        # Clamp to game surface
+        gx = max(0, min(BASE_SCREEN_WIDTH - 1, gx))
+        gy = max(0, min(BASE_SCREEN_HEIGHT - 1, gy))
+        return (gx, gy)
 
     def run(self) -> None:
         """Run the main game loop."""
@@ -524,11 +552,11 @@ class Game:
                                 self.player.rect.right = SCREEN_WIDTH
                         self.player.update(is_scrolling)
                         if self.player.equipped_item:
-                            self.player.update_cursor_pos(pygame.mouse.get_pos())
+                            self.player.update_cursor_pos(self._get_game_mouse_pos())
                             self.player.update(is_scrolling)
                         if door.is_open:
                             level_complete = True
-                        self.screen.fill(WHITE)
+                        self.game_surface.fill(WHITE)
                         self._draw_game(enemies, chest, door, key, total_scroll)
                         pygame.display.flip()
                         self.clock.tick(FPS)
@@ -549,7 +577,7 @@ class Game:
                                             self.current_level = 1
                                             self._reset_level()
                                             self.player_inventory = Inventory()
-                                self.screen.fill(WHITE)
+                                self.game_surface.fill(WHITE)
                                 self._draw_win_screen()
                                 pygame.display.flip()
                                 self.clock.tick(FPS)
@@ -566,7 +594,7 @@ class Game:
                                 self.current_level = 1
                                 self._reset_level()
                                 self.player_inventory = Inventory()
-            self.screen.fill(WHITE)
+            self.game_surface.fill(WHITE)
             if self.current_screen == "menu":
                 self._draw_menu()
             elif self.current_screen == "win":
