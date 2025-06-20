@@ -12,7 +12,6 @@ BASE_SCREEN_HEIGHT = 600
 SCREEN_WIDTH = BASE_SCREEN_WIDTH
 SCREEN_HEIGHT = BASE_SCREEN_HEIGHT
 FPS = 60
-SCALE = 1.0  # Will be set dynamically in game.py for fullscreen
 
 # Colors
 WHITE = (255, 255, 255)
@@ -24,7 +23,7 @@ YELLOW = (255, 255, 0)
 CYAN = (0, 255, 255)
 
 # Player settings
-PLAYER_SIZE = int(150 * SCALE)
+PLAYER_SIZE = (150, 150)
 PLAYER_SPEED = 5
 GRAVITY = 0.5
 JUMP_VELOCITY = -20
@@ -32,29 +31,29 @@ PLAYER_LIVES = 3
 PLAYER_MAX_HEALTH = 100
 
 # Enemy settings
-ENEMY_SIZE = PLAYER_SIZE
+ENEMY_SIZE = (150, 150)
 ENEMY_SPEED = 1
 ENEMY_MOVE_DURATION = 60
 
 # Item settings
-ITEM_SIZE = (int(75 * SCALE), int(75 * SCALE))
-WEAPON_SIZE = (int(100 * SCALE), int(100 * SCALE))
-KEY_SIZE = (int(50 * SCALE), int(50 * SCALE))
+ITEM_SIZE = (60, 60)
+WEAPON_SIZE = (80, 80)
+KEY_SIZE = (60, 60)
 ITEM_GRAVITY = 0.8
 
 # Chest settings
-CHEST_SIZE = (int(130 * SCALE), int(100 * SCALE))
+CHEST_SIZE = (100, 100)
 
 # Door settings
-DOOR_SIZE = (int(150 * SCALE), int(220 * SCALE))
+DOOR_SIZE = (160, 240)
 
 # UI settings
-BUTTON_WIDTH = int(200 * SCALE)
-BUTTON_HEIGHT = int(50 * SCALE)
-BUTTON_TEXT_SIZE = int(36 * SCALE)
-INVENTORY_SLOT_WIDTH = int(80 * SCALE)
-INVENTORY_SLOT_HEIGHT = int(40 * SCALE)
-INVENTORY_SLOT_MARGIN = int(5 * SCALE)
+BUTTON_WIDTH = 200
+BUTTON_HEIGHT = 50
+BUTTON_TEXT_SIZE = 36
+INVENTORY_SLOT_WIDTH = 80
+INVENTORY_SLOT_HEIGHT = 40
+INVENTORY_SLOT_MARGIN = 5
 INVENTORY_MAX_SLOTS = 3
 
 # Game settings
@@ -66,22 +65,25 @@ TRANSITION_DISTANCE = 100
 TOTAL_LEVELS = 10
 
 # Background size
-BACKGROUND_SIZE = (int(3200 * SCALE), int(600 * SCALE))
+BACKGROUND_SIZE = (3200, 600)
 
 # Asset paths
 ASSETS = {
-    'player_sprite': 'player_sprite.png',
+    'player': 'player_sprite.png',
     'enemy1': 'enemy1.png',
     'enemy2': 'enemy2.png',
     'enemy3': 'enemy3.png',
-    'sword': 'sword.png', 
-    'key': 'key_sprite.png',
-    'chest_closed': 'chest_closed.png',
     'chest_open': 'chest_open.png',
+    'chest_closed': 'chest_closed.png',
+    'key': 'key_sprite.png',
+    'sword': 'sword.png',
     'door': 'door_sprite.png',
     'background': 'background.png',
-    'menu': 'menu.png'
+    'menu': 'menu.png',
+    'platform': 'platform.png'
 }
+
+PLATFORM_SIZE = (240, 60)
 
 def load_image(path: str, size: Tuple[int, int] | None = None) -> pygame.Surface:
     """

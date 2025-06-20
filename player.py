@@ -11,8 +11,10 @@ from typing import Optional, Tuple
 from config import (
     SCREEN_WIDTH, SCREEN_HEIGHT, PLAYER_SIZE, PLAYER_SPEED, 
     GRAVITY, JUMP_VELOCITY, PLAYER_LIVES, PLAYER_MAX_HEALTH,
-    WHITE, BLACK, load_image, ASSETS
+    WHITE, BLACK, load_image, ASSETS, WEAPON_SIZE
 )
+from inventory import Inventory
+from item import Item
 
 
 class Player(pygame.sprite.Sprite):
@@ -29,7 +31,7 @@ class Player(pygame.sprite.Sprite):
         inventory: List of items in inventory
     """
     
-    def __init__(self, name: str, position: Tuple[int, int], size: int = PLAYER_SIZE):
+    def __init__(self, name: str, position: Tuple[int, int], size: Tuple[int, int] = PLAYER_SIZE):
         """
         Initialize the player.
         
@@ -43,8 +45,11 @@ class Player(pygame.sprite.Sprite):
         self.size = size
         
         # Load and scale player sprite
-        self.image = load_image(ASSETS['player_sprite'], (PLAYER_SIZE, PLAYER_SIZE))
+        self.image = load_image(ASSETS['player'], self.size)
         self.rect = self.image.get_rect(topleft=position)
+
+        # Create a smaller hitbox for damage detection
+        self.hitbox = self.rect.inflate(-self.rect.width * 0.5, -self.rect.height * 0.4)
         
         # Position and movement
         self.position = pygame.Vector2(position)
@@ -117,58 +122,75 @@ class Player(pygame.sprite.Sprite):
         """Stop moving left."""
         self.is_moving_left = False
 
-    def update(self, is_scrolling: bool = False) -> None:
+    def update(self, is_scrolling: bool = False, platforms: list = None) -> None:
         """
-        Update player position, state, invulnerability, and shaking.
+        Update player state, including movement, gravity, and animations.
         
         Args:
-            is_scrolling: Whether the screen is currently scrolling
+            is_scrolling: True if the screen is scrolling
+            platforms: A list of platform objects for collision detection
         """
-        # Handle invulnerability and shaking timers
+        # --- Handle Timers and Effects ---
         current_time = time.time()
         if self.is_shaking and current_time >= self.shake_end_time:
             self.is_shaking = False
         if self.is_invulnerable and current_time >= self.invulnerable_until:
             self.is_invulnerable = False
+        
         # Update shake offset if shaking
         if self.is_shaking:
-            # Shake every frame, random offset
             if current_time - self._last_shake_time > 0.02:
-                import random
                 self._shake_offset = (random.randint(-8, 8), random.randint(-8, 8))
                 self._last_shake_time = current_time
         else:
             self._shake_offset = (0, 0)
-        # Handle jumping and gravity
-        if self.is_jumping:
-            self.velocity_y += GRAVITY
-            self.position.y += self.velocity_y
-            
-            # Check if landed
-            if self.position.y >= SCREEN_HEIGHT - self.rect.height:
-                self.position.y = SCREEN_HEIGHT - self.rect.height
-                self.is_jumping = False
-                self.velocity_y = 0
 
-        # Handle horizontal movement
+        # --- Horizontal Movement ---
         if self.is_moving_right:
             self.position.x += self.speed
-        elif self.is_moving_left:
+        if self.is_moving_left:
             self.position.x -= self.speed
 
-        # Handle boundary constraints
-        self._constrain_position(is_scrolling)
-        
-        # Update rect position
+        # --- Vertical Movement & Gravity ---
+        self.velocity_y += GRAVITY
+        self.position.y += self.velocity_y
         self.rect.topleft = (int(self.position.x), int(self.position.y))
 
-        # Update equipped item position
-        if self.equipped_item:
-            self._update_equipped_item_position()
+        # --- Collision Detection ---
+        # Ground collision
+        landed = False
+        if self.rect.bottom >= SCREEN_HEIGHT:
+            self.rect.bottom = SCREEN_HEIGHT
+            self.position.y = self.rect.y
+            self.velocity_y = 0
+            self.is_jumping = False
+            landed = True
+            
+        # Platform collision
+        if not landed and platforms:
+            for platform in platforms:
+                # Check for downward collision and that player is above platform
+                if (self.velocity_y > 0 and 
+                    self.rect.colliderect(platform.rect) and
+                    self.rect.bottom <= platform.rect.top + self.velocity_y): # Check against top of platform
+                    self.rect.bottom = platform.rect.top
+                    self.position.y = self.rect.y
+                    self.velocity_y = 0
+                    self.is_jumping = False
+                    break # Stop checking after landing on one platform
+
+        self._constrain_position(is_scrolling)
+        
+        # After all position changes, update the rect and hitbox
+        self.rect.topleft = (int(self.position.x), int(self.position.y))
+        self.hitbox.center = self.rect.center
+        
+        # --- Update Equipped Item ---
+        self._update_equipped_item_position()
 
     def _constrain_position(self, is_scrolling: bool) -> None:
         """
-        Constrain player position within screen boundaries.
+        Constrain player position to screen boundaries.
         
         Args:
             is_scrolling: Whether the screen is currently scrolling
@@ -200,16 +222,16 @@ class Player(pygame.sprite.Sprite):
         if not self.equipped_item:
             return
             
-        player_center = self.position + pygame.Vector2(self.rect.width // 2, self.rect.height // 2)
-        dx = self.cursor_pos.x - player_center.x
-        dy = self.cursor_pos.y - player_center.y
+        player_center = self.rect.center
+        dx = self.cursor_pos.x - player_center[0]
+        dy = self.cursor_pos.y - player_center[1]
         angle = math.atan2(dy, dx)
         distance = min(math.hypot(dx, dy), self.equipped_item_distance)
 
         self.equipped_item_angle = angle
         self.equipped_item.rect.center = (
-            player_center.x + distance * math.cos(angle),
-            player_center.y + distance * math.sin(angle)
+            player_center[0] + distance * math.cos(angle),
+            player_center[1] + distance * math.sin(angle)
         )
         self.equipped_item.rotate(angle)
 
@@ -322,16 +344,28 @@ class Player(pygame.sprite.Sprite):
         """
         # Calculate draw position with shake offset
         draw_pos = (self.rect.x + self._shake_offset[0], self.rect.y + self._shake_offset[1])
-        # Draw player sprite with proper facing direction
-        if self.is_moving_right:
-            flipped_image = pygame.transform.flip(self.image, True, False)
-            flipped_rect = flipped_image.get_rect()
-            flipped_rect.topleft = draw_pos
-            flipped_image.set_alpha(255)  # Always fully opaque
-            screen.blit(flipped_image, flipped_rect)
+        
+        current_image = self.image
+        if self.facing_right:
+            current_image = pygame.transform.flip(self.image, True, False)
+
+        # Handle invulnerability visual effect (flashing)
+        if self.is_invulnerable:
+            # Flashes every ~100ms
+            if int(time.time() * 10) % 2 == 0:
+                current_image.set_alpha(128)
+            else:
+                current_image.set_alpha(255)
         else:
-            self.image.set_alpha(255)  # Always fully opaque
-            screen.blit(self.image, draw_pos)
+            current_image.set_alpha(255)
+            
+        screen.blit(current_image, draw_pos)
+        
         # Draw equipped item
         if self.equipped_item:
             self.equipped_item.draw(screen, draw_pos, self.facing_right)
+
+    def _update_animation(self) -> None:
+        """Placeholder for future animation logic."""
+        # This can be expanded with sprite sheets etc.
+        pass

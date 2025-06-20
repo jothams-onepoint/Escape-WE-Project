@@ -12,7 +12,8 @@ from config import (
     SCREEN_WIDTH, SCREEN_HEIGHT, FPS, WHITE, BLACK, RED,
     BUTTON_WIDTH, BUTTON_HEIGHT, BUTTON_TEXT_SIZE, TOTAL_LEVELS,
     MAX_BACKGROUND_DUPLICATES, NORMAL_SPEED, load_image, ASSETS, DOOR_SIZE, WEAPON_SIZE, ENEMY_SIZE, BACKGROUND_SIZE,
-    SCALE, BASE_SCREEN_WIDTH, BASE_SCREEN_HEIGHT, PLAYER_SIZE, ITEM_SIZE, KEY_SIZE, CHEST_SIZE, INVENTORY_SLOT_WIDTH, INVENTORY_SLOT_HEIGHT, INVENTORY_SLOT_MARGIN, PLAYER_MAX_HEALTH, PLAYER_LIVES
+    BASE_SCREEN_WIDTH, BASE_SCREEN_HEIGHT, PLAYER_SIZE, ITEM_SIZE, KEY_SIZE, CHEST_SIZE, INVENTORY_SLOT_WIDTH, INVENTORY_SLOT_HEIGHT, INVENTORY_SLOT_MARGIN, PLAYER_MAX_HEALTH, PLAYER_LIVES,
+    PLATFORM_SIZE
 )
 from player import Player
 from Enemy import Enemy
@@ -20,6 +21,7 @@ from item import spawn_key
 from Chest import Chest, handle_click
 from door import Door
 from inventory import Inventory
+from platform import Platform
 
 
 class Game:
@@ -42,6 +44,7 @@ class Game:
         door: Door instance
         key: Key item
         enemies: List of enemies
+        platforms: List of platforms
         max_scroll: Maximum scroll offset
         level_complete: Boolean indicating level completion
     """
@@ -73,7 +76,7 @@ class Game:
         self._load_assets()
         
         # Initialize game objects
-        self.player = Player("Hero", (100, SCREEN_HEIGHT - ENEMY_SIZE), PLAYER_SIZE)
+        self.player = Player("Hero", (100, SCREEN_HEIGHT - PLAYER_SIZE[1]), PLAYER_SIZE)
         self.player_inventory = Inventory()
         self.dropped_items = []
         self.placing_item: dict[str, Any] = {"item": None, "display_text": None, "display_rect": None}
@@ -100,16 +103,23 @@ class Game:
         self.door = None
         self.key = None
         self.enemies = []
+        self.platforms = []
         self.total_scroll = 0
         self.max_scroll = 0
         self.level_complete = False
 
     def _load_assets(self) -> None:
         """Load game assets."""
-        self.menu_background = load_image(ASSETS['menu'], (SCREEN_WIDTH, SCREEN_HEIGHT))
-        self.game_background = load_image(ASSETS['background'], BACKGROUND_SIZE)
+        self.menu_background = load_image(ASSETS['menu'], (BASE_SCREEN_WIDTH, BASE_SCREEN_HEIGHT))
+        
+        # Scale game background to screen height, preserving aspect ratio
+        bg_w, bg_h = BACKGROUND_SIZE
+        new_bg_h = BASE_SCREEN_HEIGHT
+        new_bg_w = int(bg_w * (new_bg_h / bg_h))
+        self.game_background = load_image(ASSETS['background'], (new_bg_w, new_bg_h))
+
         self.sword_sprite = load_image(ASSETS['sword'], WEAPON_SIZE)
-        self.game_over_background = load_image(ASSETS['background'], (SCREEN_WIDTH, SCREEN_HEIGHT))
+        self.game_over_background = load_image(ASSETS['menu'], (BASE_SCREEN_WIDTH, BASE_SCREEN_HEIGHT))
         # Load life icons
         self.life_full_img = pygame.image.load('IMG_0110-removebg-preview.png').convert_alpha()
         self.life_empty_img = pygame.image.load('IMG_0111-removebg-preview.png').convert_alpha()
@@ -405,7 +415,7 @@ class Game:
 
     def _reset_level(self) -> None:
         """Reset the current level state."""
-        self.player.position = pygame.Vector2((100, SCREEN_HEIGHT - ENEMY_SIZE))
+        self.player.position = pygame.Vector2((100, SCREEN_HEIGHT - self.player.rect.height))
         self.player.rect.topleft = (int(self.player.position.x), int(self.player.position.y))
         self.player.has_key = False
         self.player_inventory.clear()
@@ -413,7 +423,7 @@ class Game:
     def _update_scrolling(self, keys: pygame.key.ScancodeWrapper, 
                          total_scroll: int, max_scroll: int,
                          chest: Chest, key, enemies: List[Enemy], 
-                         door: Door) -> tuple:
+                         door: Door, platforms: List[Platform]) -> tuple:
         """
         Update screen scrolling and object positions.
         
@@ -425,6 +435,7 @@ class Game:
             key: Key item
             enemies: List of enemies
             door: Door instance
+            platforms: List of platforms
             
         Returns:
             Tuple of (total_scroll, move_amount, is_scrolling)
@@ -443,7 +454,7 @@ class Game:
                 elif self.player.rect.right >= right_boundary:
                     scroll_amount = min(NORMAL_SPEED, max_scroll - total_scroll)
                     is_scrolling = True
-                    self._scroll_objects(scroll_amount, chest, key, enemies)
+                    self._scroll_objects(scroll_amount, chest, key, enemies, platforms)
                     total_scroll += scroll_amount
             else:
                 move_amount = NORMAL_SPEED
@@ -455,15 +466,15 @@ class Game:
                 elif self.player.rect.left <= left_boundary:
                     scroll_amount = min(NORMAL_SPEED, total_scroll)
                     is_scrolling = True
-                    self._scroll_objects(-scroll_amount, chest, key, enemies)
+                    self._scroll_objects(-scroll_amount, chest, key, enemies, platforms)
                     total_scroll -= scroll_amount
             else:
                 move_amount = -NORMAL_SPEED
 
         return total_scroll, move_amount, is_scrolling
 
-    def _scroll_objects(self, scroll_amount: int, chest: Chest, 
-                       key, enemies: List[Enemy]) -> None:
+    def _scroll_objects(self, scroll_amount: int, chest: Chest,
+                       key, enemies: List[Enemy], platforms: List[Platform]) -> None:
         """
         Scroll all objects by the given amount.
         
@@ -472,6 +483,7 @@ class Game:
             chest: Chest instance
             key: Key item
             enemies: List of enemies
+            platforms: List of platforms
         """
         # Scroll game objects
         chest.rect.x -= scroll_amount
@@ -479,6 +491,8 @@ class Game:
             key.rect.x -= scroll_amount
         for enemy in enemies:
             enemy.x -= scroll_amount
+        for platform in platforms:
+            platform.rect.x -= scroll_amount
 
     def _draw_menu(self) -> None:
         """Draw the menu screen."""
@@ -506,22 +520,31 @@ class Game:
         self.game_surface.blit(self.cursor_surface, self._get_game_mouse_pos())
         self._blit_to_fullscreen()
 
-    def _draw_game(self, enemies: List[Enemy], chest: Chest, 
-                  door: Door, key, total_scroll: int) -> None:
+    def _draw_game(self, enemies: List[Enemy], chest: Chest,
+                  door: Door, key, total_scroll: int, platforms: List[Platform]) -> None:
         """
         Draw the game screen.
         """
-        # Draw single continuous background
-        self.game_surface.blit(self.game_background, (-total_scroll, 0))
+        # Tiled background
+        bg_width = self.game_background.get_width()
+        start_x = -(total_scroll % bg_width)
+        x = start_x
+        while x < BASE_SCREEN_WIDTH:
+            self.game_surface.blit(self.game_background, (x, 0))
+            x += bg_width
+        
         # Draw dropped items
         for item in self.dropped_items[:]:
             item.apply_gravity()
             item.draw(self.game_surface)
+        # Draw platforms
+        for platform in platforms:
+            platform.draw(self.game_surface)
         # Draw enemies
         for enemy in enemies:
             enemy.update()
             enemy.draw(self.game_surface)
-            if enemy.rect.colliderect(self.player.rect):
+            if enemy.rect.colliderect(self.player.hitbox):
                 dead = self.player.take_damage(10)
                 if dead:
                     self.current_screen = "menu"
@@ -592,7 +615,7 @@ class Game:
         return (gx, gy)
 
     def _draw_game_over_screen(self) -> None:
-        """Draw the game over screen using background.png."""
+        """Draw the game over screen using the menu background."""
         self.game_surface.blit(self.game_over_background, (0, 0))
         game_over_text = self.font_title.render("Game Over", True, (255, 255, 255))
         text_rect = game_over_text.get_rect(center=(BASE_SCREEN_WIDTH // 2, BASE_SCREEN_HEIGHT // 3))
@@ -618,13 +641,58 @@ class Game:
 
     def _start_new_level(self):
         """Initialize or reset the current level objects."""
+        level_width = SCREEN_WIDTH * 3
+        
+        # Create platforms
+        self.platforms = []
+        for _ in range(15): # Number of platforms
+            p_w, p_h = PLATFORM_SIZE
+            p_x = random.randint(0, level_width - p_w)
+            p_y = random.randint(SCREEN_HEIGHT // 2, SCREEN_HEIGHT - p_h - 50)
+            new_platform = Platform((p_x, p_y), (p_w, p_h))
+            
+            # Prevent platform overlap
+            is_overlapping = False
+            for p in self.platforms:
+                if new_platform.rect.colliderect(p.rect.inflate(50, 50)): # Inflate to add spacing
+                    is_overlapping = True
+                    break
+            if not is_overlapping:
+                self.platforms.append(new_platform)
+        
         self.chest = Chest()
-        self.door = Door(DOOR_SIZE, SCREEN_WIDTH * 3)
+        
+        # Place door on a random platform
+        door_platform = random.choice(self.platforms)
+        self.door = Door(DOOR_SIZE, level_width)
+        self.door.rect.bottom = door_platform.rect.top
+        self.door.rect.centerx = door_platform.rect.centerx
+        
         self.key = spawn_key()
-        self.key.rect.topleft = (random.randint(100, SCREEN_WIDTH * 3 - 100), SCREEN_HEIGHT - self.key.rect.height - 30)
-        self.enemies = [Enemy() for _ in range(3)]
+        self.key.rect.topleft = (random.randint(100, level_width - 100), SCREEN_HEIGHT - self.key.rect.height - 30)
+        
+        # Place enemies on platforms and ground
+        self.enemies = []
+        num_ground_enemies = random.randint(1, 2)
+        total_enemies = 7
+
+        # Spawn ground enemies
+        for _ in range(num_ground_enemies):
+            enemy_x = random.randint(0, level_width - ENEMY_SIZE[0])
+            # No need to set y, as the Enemy class defaults to ground level
+            enemy = Enemy(x=enemy_x, platform=None) 
+            self.enemies.append(enemy)
+
+        # Spawn platform enemies
+        num_platform_enemies = total_enemies - num_ground_enemies
+        for _ in range(num_platform_enemies):
+            if self.platforms:
+                platform = random.choice(self.platforms)
+                enemy = Enemy(x=platform.rect.centerx, y=platform.rect.top - ENEMY_SIZE[1], platform=platform)
+                self.enemies.append(enemy)
+
         self.total_scroll = 0
-        self.max_scroll = SCREEN_WIDTH * 3 - SCREEN_WIDTH
+        self.max_scroll = level_width - SCREEN_WIDTH
         self.level_complete = False
 
     def run(self) -> None:
@@ -659,7 +727,7 @@ class Game:
                             break
                         keys = pygame.key.get_pressed()
                         self.total_scroll, move_amount, is_scrolling = self._update_scrolling(
-                            keys, self.total_scroll, self.max_scroll, self.chest, self.key, self.enemies, self.door
+                            keys, self.total_scroll, self.max_scroll, self.chest, self.key, self.enemies, self.door, self.platforms
                         )
                         if not is_scrolling:
                             new_x = self.player.rect.x + move_amount
@@ -669,10 +737,10 @@ class Game:
                                 self.player.rect.left = 0
                             elif new_x > SCREEN_WIDTH - self.player.rect.width:
                                 self.player.rect.right = SCREEN_WIDTH
-                        self.player.update(is_scrolling)
+                        self.player.update(is_scrolling, self.platforms)
                         if self.player.equipped_item:
                             self.player.update_cursor_pos(self._get_game_mouse_pos())
-                            self.player.update(is_scrolling)
+                            self.player.update(is_scrolling, self.platforms)
                         if self.door and self.door.is_open:
                             self.level_complete = True
                         if self.player.lives <= 0:
@@ -680,7 +748,7 @@ class Game:
                             break
                         self.game_surface.fill(WHITE)
                         if self.chest and self.door and self.key:
-                            self._draw_game(self.enemies, self.chest, self.door, self.key, self.total_scroll)
+                            self._draw_game(self.enemies, self.chest, self.door, self.key, self.total_scroll, self.platforms)
                         pygame.display.flip()
                         self.clock.tick(FPS)
                     # --- END LEVEL LOOP ---
@@ -698,7 +766,8 @@ class Game:
                                         running = False
                                     elif (win_event.type == pygame.MOUSEBUTTONDOWN and 
                                           win_event.button == 1):
-                                        if self.main_menu_button_rect.collidepoint(win_event.pos):
+                                        mouse_pos = self._get_game_mouse_pos()
+                                        if self.main_menu_button_rect.collidepoint(mouse_pos):
                                             self.current_screen = "menu"
                                             self.current_level = 1
                                             self._reset_level()
@@ -715,7 +784,8 @@ class Game:
                             running = False
                         elif (win_event.type == pygame.MOUSEBUTTONDOWN and 
                               win_event.button == 1):
-                            if self.main_menu_button_rect.collidepoint(win_event.pos):
+                            mouse_pos = self._get_game_mouse_pos()
+                            if self.main_menu_button_rect.collidepoint(mouse_pos):
                                 self.current_screen = "menu"
                                 self.current_level = 1
                                 self._reset_level()
@@ -726,7 +796,8 @@ class Game:
                             running = False
                         elif (go_event.type == pygame.MOUSEBUTTONDOWN and 
                               go_event.button == 1):
-                            if self.play_again_button_rect.collidepoint(go_event.pos):
+                            mouse_pos = self._get_game_mouse_pos()
+                            if self.play_again_button_rect.collidepoint(mouse_pos):
                                 # Play again: reset game state, inventory, equipped items, lives, health
                                 self.current_screen = "game"
                                 self.current_level = 1
@@ -741,7 +812,7 @@ class Game:
                                 self.key = None
                                 self.level_complete = False
                                 self.total_scroll = 0
-                            elif self.exit_game_button_rect.collidepoint(go_event.pos):
+                            elif self.exit_game_button_rect.collidepoint(mouse_pos):
                                 running = False
                                 pygame.quit()
                                 return
