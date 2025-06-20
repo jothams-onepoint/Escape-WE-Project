@@ -7,7 +7,7 @@ import pygame
 import random
 from typing import Tuple
 from config import (
-    SCREEN_HEIGHT, DOOR_SIZE, load_image, ASSETS
+    SCREEN_HEIGHT, DOOR_SIZE, load_image, ASSETS, PLAYER_MAX_HEALTH
 )
 
 
@@ -89,6 +89,8 @@ class Door:
             print(f"{player.name} uses the key to open the door and proceeds to the next level!")
             self.is_open = True
             player.has_key = False  # Remove key after use
+            # Heal player by 5 (capped at max health)
+            player.health = min(player.health + 5, PLAYER_MAX_HEALTH)
         else:
             print("You need a key to open this door!")
 
