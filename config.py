@@ -83,7 +83,7 @@ ASSETS = {
     'platform': 'platform.png'
 }
 
-PLATFORM_SIZE = (240, 60)
+PLATFORM_SIZE = (240, 30)
 
 def load_image(path: str, size: Tuple[int, int] | None = None) -> pygame.Surface:
     """
