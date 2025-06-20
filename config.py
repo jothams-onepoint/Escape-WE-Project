@@ -74,13 +74,13 @@ ASSETS = {
     'enemy1': 'enemy1.png',
     'enemy2': 'enemy2.png',
     'enemy3': 'enemy3.png',
-    'sword': 'sword.png',
+    'sword': 'sword.png', 
     'key': 'key_sprite.png',
     'chest_closed': 'chest_closed.png',
     'chest_open': 'chest_open.png',
     'door': 'door_sprite.png',
     'background': 'background.png',
-    'menu': 'menu.jpg'
+    'menu': 'menu.png'
 }
 
 def load_image(path: str, size: Tuple[int, int] | None = None) -> pygame.Surface:
