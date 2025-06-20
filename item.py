@@ -95,8 +95,8 @@ class Item:
             # Position sword relative to the center of the player sprite
             player_center_x = player_position[0] + self.rect.width // 2
             player_center_y = player_position[1] + self.rect.height // 2
-            offset_x_right = 105  # for right hand (slightly decreased)
-            offset_x_left = 10    # for left hand (slightly decreased)
+            offset_x_right = 80  # for right hand (slightly decreased)
+            offset_x_left = 20    # for left hand (slightly decreased)
             if facing_right:
                 center_x = player_center_x + offset_x_right
             else:

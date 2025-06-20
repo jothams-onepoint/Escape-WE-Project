@@ -43,7 +43,7 @@ class Player(pygame.sprite.Sprite):
         self.size = size
         
         # Load and scale player sprite
-        self.image = load_image(ASSETS['player_sprite'], (200, 200))
+        self.image = load_image(ASSETS['player_sprite'], (PLAYER_SIZE, PLAYER_SIZE))
         self.rect = self.image.get_rect(topleft=position)
         
         # Position and movement

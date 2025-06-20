@@ -11,7 +11,7 @@ from typing import List, Dict, Any
 from config import (
     SCREEN_WIDTH, SCREEN_HEIGHT, FPS, WHITE, BLACK, RED,
     BUTTON_WIDTH, BUTTON_HEIGHT, BUTTON_TEXT_SIZE, TOTAL_LEVELS,
-    MAX_BACKGROUND_DUPLICATES, NORMAL_SPEED, load_image, ASSETS, DOOR_SIZE, WEAPON_SIZE, ENEMY_SIZE
+    MAX_BACKGROUND_DUPLICATES, NORMAL_SPEED, load_image, ASSETS, DOOR_SIZE, WEAPON_SIZE, ENEMY_SIZE, BACKGROUND_SIZE
 )
 from player import Player
 from Enemy import Enemy
@@ -35,6 +35,7 @@ class Game:
         backgrounds: List of background rectangles for scrolling
         dropped_items: List of items dropped in the world
         placing_item: Item being placed in inventory
+        total_scroll: Current scroll offset
     """
     
     def __init__(self):
@@ -57,11 +58,8 @@ class Game:
         self.dropped_items = []
         self.placing_item: dict[str, Any] = {"item": None, "display_text": None, "display_rect": None}
         
-        # Background scrolling
-        self.backgrounds = [
-            pygame.Rect(x * SCREEN_WIDTH, 0, SCREEN_WIDTH, SCREEN_HEIGHT) 
-            for x in range(MAX_BACKGROUND_DUPLICATES)
-        ]
+        # Background scroll offset
+        self.total_scroll = 0
         
         # UI elements
         self._setup_ui()
@@ -74,7 +72,7 @@ class Game:
     def _load_assets(self) -> None:
         """Load game assets."""
         self.menu_background = load_image(ASSETS['menu'], (SCREEN_WIDTH, SCREEN_HEIGHT))
-        self.game_background = load_image(ASSETS['background'], (SCREEN_WIDTH, SCREEN_HEIGHT))
+        self.game_background = load_image(ASSETS['background'], BACKGROUND_SIZE)
         self.sword_sprite = load_image(ASSETS['sword'], (75, 75))
 
     def _setup_ui(self) -> None:
@@ -370,16 +368,6 @@ class Game:
             key: Key item
             enemies: List of enemies
         """
-        # Scroll backgrounds
-        for bg in self.backgrounds:
-            bg.x -= scroll_amount
-            if bg.right <= 0:
-                max_right = max(b.right for b in self.backgrounds)
-                bg.left = max_right
-            elif bg.left >= SCREEN_WIDTH:
-                min_left = min(b.left for b in self.backgrounds)
-                bg.right = min_left
-
         # Scroll game objects
         chest.rect.x -= scroll_amount
         if not key.is_picked_up:
@@ -424,9 +412,8 @@ class Game:
             key: Key item
             total_scroll: Current scroll offset
         """
-        # Draw backgrounds
-        for bg in self.backgrounds:
-            self.screen.blit(self.game_background, bg.topleft)
+        # Draw single continuous background
+        self.screen.blit(self.game_background, (-total_scroll, 0))
 
         # Draw dropped items
         for item in self.dropped_items[:]:
